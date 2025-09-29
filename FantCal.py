@@ -16,7 +16,13 @@ finally:
     date = datetime.today()
 
 total = (date.toordinal() - 1)
-daysinyear = weekval * monthval * yearval
+year = total//(yearval*monthval*weekval)
+total %= (yearval*monthval*weekval)
+month = total//(monthval*weekval)
+total %= (monthval*weekval)
+week = total//weekval
+total %= weekval
+day = total
 
 print("By your calender, it has been",year,"years,",month,"months,",week,"weeks and",day,"days since year 0.")
 print("Your date is:",(year+"/"+month+"/"+(week*weekval + day)))
