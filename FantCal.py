@@ -7,18 +7,16 @@ while ((yearval <= 0 ) or (monthval <= 0) or (weekval <= 0)):
     monthval = int(input("How many weeks in a month? "))
     yearval = int(input("How many months in a year? "))
 indate = input("Enter a date: ")
-try: date = datetime.strptime(indate, "%-m/%-d/%Y")
-except ValueError:  
-    try: 
-        date = datetime.strptime(indate, "%-d/%-m/%Y")
-    except ValueError:  
-        try:
-            date = datetime.strptime(indate,"%Y-%-m-%-d")
-        except ValueError: date = datetime.strptime(indate, "%Y/%m/%d")
-finally: 
-    print("Invalid date, falling back to today.")
-    date = datetime.today()
+formats = ["%m/%d/%Y", "%d/%m/%Y", "%Y-%m-%d", "%Y/%m/%d"]
 
+for format in formats:
+    try: 
+        date = datetime.strptime(indate,format)
+        break
+
+    except ValueError:
+        print("Couldn't parse date format, falling back to today.")
+        date = datetime.today()
 total = (date.toordinal() - 1)
 year = total//(yearval*monthval*weekval)
 total %= (yearval*monthval*weekval)
