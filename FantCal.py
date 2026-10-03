@@ -26,7 +26,12 @@ total %= (monthval*weekval)
 week = total//weekval
 total %= weekval
 day = total
-
+if year == 0:
+    year +=1
+if month == 0:
+    month += 1
+if day == 0:
+    day += 1
 print("By your calender, it has been",year,"years,",month,"months,",week,"weeks and",day,"days since year 0.")
 print("Your date is:",(str(year)+"/"+str(month)+"/"+str(week*weekval + day)))
 
