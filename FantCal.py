@@ -60,17 +60,6 @@ def gregorian_to_days(year, month, day):
 # Date input
 
 def parse_date(indate, isZero=False):
-    """
-    Accepts:
-        YYYY-MM-DD
-        YYYY/MM/DD
-        MM/DD/YYYY
-        DD/MM/YYYY
-
-    Years may be arbitrarily large or negative.
-    Ambiguous slash dates prefer MM/DD/YYYY.
-    """
-
     indate = indate.strip()
 
     if not indate:
@@ -80,22 +69,19 @@ def parse_date(indate, isZero=False):
         today = date.today()
         return (today.year, today.month, today.day)
 
-    # Year-first dates.
-    patterns = [
-        r"([+-]?\d+)-(\d{1,2})-(\d{1,2})",
-        r"([+-]?\d{4,})/(\d{1,2})/(\d{1,2})"
-    ]
+    # Year-first: YYYY-MM-DD or YYYY/MM/DD
+    match = re.fullmatch(
+        r"([+-]?\d+)[-/](\d{1,2})[/-](\d{1,2})",
+        indate
+    )
 
-    for pattern in patterns:
-        match = re.fullmatch(pattern, indate)
+    if match:
+        year, month, day = map(int, match.groups())
 
-        if match:
-            year, month, day = map(int, match.groups())
+        gregorian_to_days(year, month, day)
+        return (year, month, day)
 
-            gregorian_to_days(year, month, day)
-            return (year, month, day)
-
-    # Slash dates with the year at the end.
+    # Month-first or day-first: MM/DD/YYYY
     match = re.fullmatch(
         r"(\d{1,2})/(\d{1,2})/([+-]?\d+)",
         indate
@@ -104,17 +90,19 @@ def parse_date(indate, isZero=False):
     if match:
         a, b, year = map(int, match.groups())
 
-        # Prefer month/day/year.
+        # First try MM/DD/YYYY.
         try:
             gregorian_to_days(year, a, b)
             return (year, a, b)
 
         except ValueError:
-            # Try day/month/year.
+            # Then try DD/MM/YYYY.
             gregorian_to_days(year, b, a)
             return (year, b, a)
 
-    raise ValueError("Unrecognized date format.")
+    raise ValueError(
+        f"Unrecognized date format: {indate!r}"
+    )
 
 
 def parser(indate, isZero=False):
@@ -122,12 +110,10 @@ def parser(indate, isZero=False):
         return parse_date(indate, isZero)
 
     except ValueError as error:
-        print(error)
-        print("Couldn't parse date, falling back to default.")
+        print("Date parsing error:", error)
+        print("Falling back to default.")
 
         return parse_date("", isZero)
-
-
 # Fantasy calendar configuration
 
 yearval = 0
