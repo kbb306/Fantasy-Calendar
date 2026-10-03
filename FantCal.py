@@ -1,4 +1,134 @@
-from datetime import datetime
+
+import re
+from datetime import date
+
+# Gregorian calendar calculations
+
+def is_leap(year):
+    return (
+        year % 4 == 0 and
+        (year % 100 != 0 or year % 400 == 0)
+    )
+
+
+def days_in_month(year, month):
+    lengths = [
+        31, 28, 31, 30, 31, 30,
+        31, 31, 30, 31, 30, 31
+    ]
+
+    if month == 2 and is_leap(year):
+        return 29
+
+    return lengths[month - 1]
+
+
+def gregorian_to_days(year, month, day):
+    """
+    Convert a Gregorian date to an integer.
+
+    January 1, year 1 = day 0.
+    Supports positive, negative and zero years.
+    """
+
+    if not 1 <= month <= 12:
+        raise ValueError("Invalid month.")
+
+    if not 1 <= day <= days_in_month(year, month):
+        raise ValueError("Invalid day.")
+
+    # Days in all complete preceding years.
+    y = year - 1
+
+    total = (
+        365 * y
+        + y // 4
+        - y // 100
+        + y // 400
+    )
+
+    # Days in all complete preceding months.
+    for m in range(1, month):
+        total += days_in_month(year, m)
+
+    # Days elapsed in the current month.
+    total += day - 1
+
+    return total
+
+
+# Date input
+
+def parse_date(indate, isZero=False):
+    """
+    Accepts:
+        YYYY-MM-DD
+        YYYY/MM/DD
+        MM/DD/YYYY
+        DD/MM/YYYY
+
+    Years may be arbitrarily large or negative.
+    Ambiguous slash dates prefer MM/DD/YYYY.
+    """
+
+    indate = indate.strip()
+
+    if not indate:
+        if isZero:
+            return (1, 1, 1)
+
+        today = date.today()
+        return (today.year, today.month, today.day)
+
+    # Year-first dates.
+    patterns = [
+        r"([+-]?\d+)-(\d{1,2})-(\d{1,2})",
+        r"([+-]?\d{4,})/(\d{1,2})/(\d{1,2})"
+    ]
+
+    for pattern in patterns:
+        match = re.fullmatch(pattern, indate)
+
+        if match:
+            year, month, day = map(int, match.groups())
+
+            gregorian_to_days(year, month, day)
+            return (year, month, day)
+
+    # Slash dates with the year at the end.
+    match = re.fullmatch(
+        r"(\d{1,2})/(\d{1,2})/([+-]?\d+)",
+        indate
+    )
+
+    if match:
+        a, b, year = map(int, match.groups())
+
+        # Prefer month/day/year.
+        try:
+            gregorian_to_days(year, a, b)
+            return (year, a, b)
+
+        except ValueError:
+            # Try day/month/year.
+            gregorian_to_days(year, b, a)
+            return (year, b, a)
+
+    raise ValueError("Unrecognized date format.")
+
+
+def parser(indate, isZero=False):
+    try:
+        return parse_date(indate, isZero)
+
+    except ValueError as error:
+        print(error)
+        print("Couldn't parse date, falling back to default.")
+
+        return parse_date("", isZero)
+
+
+# Fantasy calendar configuration
 
 yearval = 0
 monthval = 0
@@ -9,29 +139,30 @@ while yearval <= 0 or monthval <= 0 or weekval <= 0:
         weekval = int(input("How many days in a week? "))
         monthval = int(input("How many weeks in a month? "))
         yearval = int(input("How many months in a year? "))
+
     except ValueError:
         print("Please enter positive whole numbers.")
         continue
 
+# Get the epoch.
+zero = parser(
+    input("Enter an optional start date (Enter for standard): "),
+    True
+)
+
+# Get the date to convert.
 indate = input("Enter a date: ")
+current = parser(indate)
 
-formats = ["%m/%d/%Y", "%d/%m/%Y",
-           "%Y-%m-%d", "%Y/%m/%d"]
+# Convert both Gregorian dates into absolute day counts.
+epoch_days = gregorian_to_days(*zero)
+current_days = gregorian_to_days(*current)
 
-for format in formats:
-    try:
-        date = datetime.strptime(indate, format)
-        break
-    except ValueError:
-        continue
-else:
-    print("Couldn't parse date format, falling back to today.")
-    date = datetime.today()
+# Calculate signed elapsed days.
+total = current_days - epoch_days
+elapsed = total
 
-# Convert Gregorian date into elapsed days.
-total = date.toordinal() - 1
-
-# Calculate the size of each calendar unit.
+# Calculate the size of each fantasy calendar unit.
 days_per_month = monthval * weekval
 days_per_year = yearval * days_per_month
 
@@ -43,15 +174,15 @@ total %= days_per_year
 month = total // days_per_month
 total %= days_per_month
 
-# Calculate the week.
+# Calculate the fantasy week.
 week = total // weekval
 total %= weekval
 
-# Calculate the day.
+# Calculate the fantasy day.
 day = total
 
-# Convert from zero-based to one-based numbering.
-year += 1
+# Convert positions to one-based numbering.
+# Keep the fantasy year zero-based.
 month += 1
 week += 1
 day += 1
@@ -59,13 +190,12 @@ day += 1
 # Calculate the day of the month.
 day_of_month = (week - 1) * weekval + day
 
-print("By your calendar, it has been",
-      year - 1, "complete years,",
-      month - 1, "complete months,",
-      week - 1, "complete weeks and",
-      day - 1, "days since the start of those periods.")
+# Display the results.
+print("Days since the epoch:", elapsed)
 
-print("Your date is:",
-      str(year) + "/" +
-      str(month) + "/" +
-      str(day_of_month))
+print(
+    "Your date is:",
+    str(year) + "/" +
+    str(month) + "/" +
+    str(day_of_month)
+)
